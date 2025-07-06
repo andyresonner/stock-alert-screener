@@ -1,42 +1,37 @@
 import requests
 import time
 
-# Define your stock symbols and threshold alerts
+# Basic config
 WATCHLIST = {
-    "AAPL": 200.00,
-    "TSLA": 800.00,
-    "NVDA": 130.00
+    "AAPL": 185,
+    "NVDA": 130,
+    "TSLA": 210,
 }
 
-API_KEY = "demo"  # Replace with your real API key
-BASE_URL = "https://www.alphavantage.co/query"
+ALERT_ABOVE = True  # True = alert if price goes above threshold, False = below
 
-def get_price(symbol):
-    params = {
-        "function": "GLOBAL_QUOTE",
-        "symbol": symbol,
-        "apikey": API_KEY
-    }
-    response = requests.get(BASE_URL, params=params)
-    data = response.json()
-    try:
-        price = float(data["Global Quote"]["05. price"])
-        return price
-    except (KeyError, ValueError):
-        return None
+def fetch_price(ticker):
+    url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={ticker}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        return data["quoteResponse"]["result"][0]["regularMarketPrice"]
+    return None
 
-def check_stocks():
-    for symbol, threshold in WATCHLIST.items():
-        price = get_price(symbol)
+def check_alerts():
+    print("\nChecking stock prices...\n")
+    for ticker, threshold in WATCHLIST.items():
+        price = fetch_price(ticker)
         if price is None:
-            print(f"⚠️ Error fetching price for {symbol}")
-        elif price >= threshold:
-            print(f"📈 {symbol} is above your alert threshold: ${price:.2f}")
+            print(f"{ticker}: Failed to fetch price.")
+            continue
+
+        if (ALERT_ABOVE and price > threshold) or (not ALERT_ABOVE and price < threshold):
+            print(f"🚨 ALERT: {ticker} is at ${price} (threshold: {threshold})")
         else:
-            print(f"{symbol} is currently ${price:.2f}")
+            print(f"{ticker} is at ${price} (no alert)")
 
 if __name__ == "__main__":
     while True:
-        print("\n🔍 Checking stock prices...")
-        check_stocks()
-        time.sleep(300)  # Wait 5 minutes before next check
+        check_alerts()
+        time.sleep(60)  # check every 60 seconds
